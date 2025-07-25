@@ -1,12 +1,11 @@
-let move_speed = 3, grativy = 0.5;
+let move_speed = 3,
+    gravity = 0.5;
 let bird = document.querySelector('.bird');
 let img = document.getElementById('bird-1');
-let sound_point = new Audio('sounds_effect/point.mp3');
-let sound_die = new Audio('sounds_effect/die.mp3');
+let sound_point = new Audio('sounds effect/point.mp3');
+let sound_die = new Audio('sounds effect/die.mp3');
 
-let bird_props = bird.getBoundingClientRect();
 let background = document.querySelector('.background').getBoundingClientRect();
-
 let score_val = document.querySelector('.score_val');
 let message = document.querySelector('.message');
 let score_title = document.querySelector('.score_title');
@@ -15,8 +14,19 @@ let game_state = 'Start';
 img.style.display = 'none';
 message.classList.add('messageStyle');
 
+let bird_dy = 0; // Bird vertical speed
+
+function flapBird() {
+    if (game_state !== 'Play') return;
+    img.src = 'images/Bird-2.png';
+    bird_dy = -7.6;
+    setTimeout(() => {
+        img.src = 'images/Bird.png';
+    }, 100);
+}
+
 function startGame() {
-    document.querySelectorAll('.pipe_sprite').forEach((e) => e.remove());
+    document.querySelectorAll('.pipe_sprite').forEach(e => e.remove());
     img.style.display = 'block';
     bird.style.top = '40vh';
     game_state = 'Play';
@@ -27,38 +37,21 @@ function startGame() {
     play();
 }
 
-// Start game with Enter key (desktop)
+// Controls: Start game & flap
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && game_state !== 'Play') {
+    if ((e.key === 'Enter') && game_state !== 'Play') {
         startGame();
+    }
+    if ((e.key === 'ArrowUp' || e.key === ' ') && game_state === 'Play') {
+        flapBird();
     }
 });
 
-// Start game on first tap (mobile)
+// Touch controls for mobile
 document.addEventListener('touchstart', () => {
     if (game_state !== 'Play') {
         startGame();
-    }
-});
-
-function flapBird() {
-    img.src = 'images/Bird-2.png';
-    bird_dy = -7.6;
-    setTimeout(() => {
-        img.src = 'images/Bird.png';
-    }, 100);
-}
-
-// Flap control - desktop
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowUp' || e.key === ' ') {
-        if (game_state === 'Play') flapBird();
-    }
-});
-
-// Flap control - mobile
-document.addEventListener('touchstart', () => {
-    if (game_state === 'Play') {
+    } else {
         flapBird();
     }
 });
@@ -67,88 +60,105 @@ function play() {
     function move() {
         if (game_state !== 'Play') return;
 
-        let pipe_sprite = document.querySelectorAll('.pipe_sprite');
-        pipe_sprite.forEach((element) => {
-            let pipe_sprite_props = element.getBoundingClientRect();
-            bird_props = bird.getBoundingClientRect();
+        let pipe_sprites = document.querySelectorAll('.pipe_sprite');
+        pipe_sprites.forEach((element) => {
+            let pipe_rect = element.getBoundingClientRect();
+            let bird_rect = bird.getBoundingClientRect();
 
-            if (pipe_sprite_props.right <= 0) {
+            // Remove pipes that move out of screen
+            if (pipe_rect.right <= 0) {
                 element.remove();
             } else {
+                // Collision detection
                 if (
-                    bird_props.left < pipe_sprite_props.left + pipe_sprite_props.width &&
-                    bird_props.left + bird_props.width > pipe_sprite_props.left &&
-                    bird_props.top < pipe_sprite_props.top + pipe_sprite_props.height &&
-                    bird_props.top + bird_props.height > pipe_sprite_props.top
+                    bird_rect.left < pipe_rect.left + pipe_rect.width &&
+                    bird_rect.left + bird_rect.width > pipe_rect.left &&
+                    bird_rect.top < pipe_rect.top + pipe_rect.height &&
+                    bird_rect.top + bird_rect.height > pipe_rect.top
                 ) {
-                    game_state = 'End';
-                    message.innerHTML = 'Game Over'.fontcolor('red') + '<br>Press Enter or Tap To Restart';
-                    message.classList.add('messageStyle');
-                    img.style.display = 'none';
-                    sound_die.play();
+                    gameOver();
                     return;
                 } else {
                     if (
-                        pipe_sprite_props.right < bird_props.left &&
-                        pipe_sprite_props.right + move_speed >= bird_props.left &&
-                        element.increase_score == '1'
+                        pipe_rect.right < bird_rect.left &&
+                        pipe_rect.right + move_speed >= bird_rect.left &&
+                        element.increase_score === '1'
                     ) {
                         score_val.innerHTML = +score_val.innerHTML + 1;
                         sound_point.play();
+                        element.increase_score = '0'; // Avoid double score
                     }
-                    element.style.left = pipe_sprite_props.left - move_speed + 'px';
+                    element.style.left = pipe_rect.left - move_speed + 'px';
                 }
             }
         });
+
         requestAnimationFrame(move);
     }
+
     requestAnimationFrame(move);
 
-    let bird_dy = 0;
-    function apply_gravity() {
+    function applyGravity() {
         if (game_state !== 'Play') return;
-        bird_dy += grativy;
 
+        let bird_rect = bird.getBoundingClientRect();
+
+        bird_dy += gravity;
+        bird.style.top = bird_rect.top + bird_dy + 'px';
+
+        // Update bird_props for next check
+        bird_props = bird.getBoundingClientRect();
+
+        // Check if bird hits ground or goes off top
         if (bird_props.top <= 0 || bird_props.bottom >= background.bottom) {
-            game_state = 'End';
-            message.innerHTML = 'Game Over'.fontcolor('red') + '<br>Press Enter or Tap To Restart';
-            message.classList.add('messageStyle');
-            img.style.display = 'none';
-            sound_die.play();
+            gameOver();
             return;
         }
 
-        bird.style.top = bird_props.top + bird_dy + 'px';
-        bird_props = bird.getBoundingClientRect();
-        requestAnimationFrame(apply_gravity);
+        requestAnimationFrame(applyGravity);
     }
-    requestAnimationFrame(apply_gravity);
 
-    let pipe_seperation = 0;
+    requestAnimationFrame(applyGravity);
+
+    let pipe_separation = 0;
     let pipe_gap = 35;
 
-    function create_pipe() {
+    function createPipe() {
         if (game_state !== 'Play') return;
 
-        if (pipe_seperation > 115) {
-            pipe_seperation = 0;
+        if (pipe_separation > 115) {
+            pipe_separation = 0;
+            let pipe_pos = Math.floor(Math.random() * 43) + 8;
 
-            let pipe_posi = Math.floor(Math.random() * 43) + 8;
-            let pipe_sprite_inv = document.createElement('div');
-            pipe_sprite_inv.className = 'pipe_sprite';
-            pipe_sprite_inv.style.top = pipe_posi - 70 + 'vh';
-            pipe_sprite_inv.style.left = '100vw';
-            document.body.appendChild(pipe_sprite_inv);
+            // Top pipe
+            let pipe_top = document.createElement('div');
+            pipe_top.className = 'pipe_sprite';
+            pipe_top.style.top = pipe_pos - 70 + 'vh';
+            pipe_top.style.left = '100vw';
 
-            let pipe_sprite = document.createElement('div');
-            pipe_sprite.className = 'pipe_sprite';
-            pipe_sprite.style.top = pipe_posi + pipe_gap + 'vh';
-            pipe_sprite.style.left = '100vw';
-            pipe_sprite.increase_score = '1';
-            document.body.appendChild(pipe_sprite);
+            document.body.appendChild(pipe_top);
+
+            // Bottom pipe
+            let pipe_bottom = document.createElement('div');
+            pipe_bottom.className = 'pipe_sprite';
+            pipe_bottom.style.top = pipe_pos + pipe_gap + 'vh';
+            pipe_bottom.style.left = '100vw';
+            pipe_bottom.increase_score = '1';
+
+            document.body.appendChild(pipe_bottom);
         }
-        pipe_seperation++;
-        requestAnimationFrame(create_pipe);
+
+        pipe_separation++;
+        requestAnimationFrame(createPipe);
     }
-    requestAnimationFrame(create_pipe);
+
+    requestAnimationFrame(createPipe);
+}
+
+function gameOver() {
+    game_state = 'End';
+    message.innerHTML = 'Game Over'.fontcolor('red') + '<br>Press Enter or Tap to Restart';
+    message.classList.add('messageStyle');
+    img.style.display = 'none';
+    sound_die.play();
 }
