@@ -29,6 +29,7 @@ function startGame() {
     document.querySelectorAll('.pipe_sprite').forEach(e => e.remove());
     img.style.display = 'block';
     bird.style.top = '40vh';
+    bird_dy = 0;
     game_state = 'Play';
     message.innerHTML = '';
     score_title.innerHTML = 'Score : ';
